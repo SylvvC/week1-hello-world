@@ -28,65 +28,166 @@ export default async function Home() {
     profile = data
   }
 
+  const hasCompleteProfile =
+    Boolean(profile?.first_name?.trim()) &&
+    Boolean(profile?.last_name?.trim())
+
+  const displayName = hasCompleteProfile
+    ? `${profile!.first_name} ${profile!.last_name}`
+    : 'Complete your profile'
+
+  const accountInitials = hasCompleteProfile
+    ? `${profile!.first_name![0]}${profile!.last_name![0]}`.toUpperCase()
+    : 'U'
+
   return (
-    <main>
-      <h1>Student Hub</h1>
+    <main className="app-shell">
+      <div className="page-card">
+        <header className="hero">
+          <span className="eyebrow">Student Hub</span>
 
-      <p>
-        View your academic programs and manage your account.
-      </p>
+          <h1>
+            Your academic life,
+            <br />
+            all in one place.
+          </h1>
 
-      <h2>Academic Programs</h2>
-
-      {programsError ? (
-        <p>Error loading academic programs: {programsError.message}</p>
-      ) : (
-        <ul>
-          {programs?.map((program) => (
-            <li key={program.id}>
-              {program.name} — {program.status}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <hr />
-
-      <h2>Account</h2>
-
-      {!userId ? (
-        <>
           <p>
-            Sign in to manage your profile and access your private dashboard.
+            View your academic programs and securely manage your
+            personal profile.
           </p>
+        </header>
 
-          <Link href="/login">
-            Sign in with Google
-          </Link>
-        </>
-      ) : (
-        <>
-          {profile?.first_name && profile?.last_name ? (
+        <section className="section">
+          <div className="section-heading">
+            <h2>Academic Programs</h2>
+
+            {!programsError && (
+              <span className="section-note">
+                {programs?.length ?? 0} programs
+              </span>
+            )}
+          </div>
+
+          {programsError ? (
             <p>
-              Welcome, {profile.first_name} {profile.last_name}.
+              Error loading academic programs:
+              {' '}
+              {programsError.message}
             </p>
           ) : (
-            <p>
-              Your profile is incomplete. Please add your name.
-            </p>
+            <div className="program-grid">
+              {programs?.map((program) => {
+                const monogram = program.name
+                  .split(' ')
+                  .map((word: string) => word[0])
+                  .join('')
+                  .slice(0, 2)
+                  .toUpperCase()
+
+                const badgeClass =
+                  program.status === 'Major'
+                    ? 'badge badge-major'
+                    : 'badge badge-minor'
+
+                return (
+                  <article
+                    className="program-card"
+                    key={program.id}
+                  >
+                    <div className="program-monogram">
+                      {monogram}
+                    </div>
+
+                    <h3>{program.name}</h3>
+
+                    <span className={badgeClass}>
+                      {program.status}
+                    </span>
+                  </article>
+                )
+              })}
+            </div>
           )}
+        </section>
 
-          <p>
-            <Link href="/profile">Profile</Link>
-          </p>
+        <section className="section">
+          <div className="section-heading">
+            <h2>Account</h2>
+          </div>
 
-          <p>
-            <Link href="/dashboard">Private Dashboard</Link>
-          </p>
+          {!userId ? (
+            <div className="account-card">
+              <div className="account-summary">
+                <div className="avatar-initials">
+                  ?
+                </div>
 
-          <SignOutButton />
-        </>
-      )}
+                <div>
+                  <span className="eyebrow">
+                    Guest
+                  </span>
+
+                  <h3>Sign in to continue</h3>
+
+                  <p>
+                    Access your profile and private dashboard.
+                  </p>
+                </div>
+              </div>
+
+              <div className="action-row">
+                <Link
+                  className="button-link"
+                  href="/login"
+                >
+                  Sign in with Google
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="account-card">
+              <div className="account-summary">
+                <div className="avatar-initials">
+                  {accountInitials}
+                </div>
+
+                <div>
+                  <span className="eyebrow">
+                    Signed in
+                  </span>
+
+                  <h3>{displayName}</h3>
+
+                  <p>
+                    {hasCompleteProfile
+                      ? 'Your profile is ready.'
+                      : 'Add your name to complete your profile.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="action-row">
+                <Link
+                  className="button-link"
+                  href="/profile"
+                >
+                  Edit profile
+                </Link>
+
+                <Link
+                  className="button-link button-secondary"
+                  href="/dashboard"
+                >
+                  Private dashboard
+                </Link>
+
+                <SignOutButton />
+              </div>
+            </div>
+          )}
+        </section>
+      </div>
     </main>
   )
 }

@@ -28,11 +28,17 @@ export default function ProfileForm({
 }: ProfileFormProps) {
   const router = useRouter()
 
-  const [firstName, setFirstName] = useState(initialFirstName)
-  const [lastName, setLastName] = useState(initialLastName)
-  const [avatarPath, setAvatarPath] = useState(initialAvatarPath)
+  const [firstName, setFirstName] =
+    useState(initialFirstName)
 
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [lastName, setLastName] =
+    useState(initialLastName)
+
+  const [avatarPath, setAvatarPath] =
+    useState(initialAvatarPath)
+
+  const [selectedFile, setSelectedFile] =
+    useState<File | null>(null)
 
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -50,7 +56,9 @@ export default function ProfileForm({
     avatarUrl = data.publicUrl
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault()
 
     setSaving(true)
@@ -71,7 +79,9 @@ export default function ProfileForm({
 
     if (selectedFile) {
       if (!ALLOWED_IMAGE_TYPES.includes(selectedFile.type)) {
-        setError('Please choose a JPEG, PNG, WebP, or GIF image.')
+        setError(
+          'Please choose a JPEG, PNG, WebP, or GIF image.'
+        )
         setSaving(false)
         return
       }
@@ -83,21 +93,27 @@ export default function ProfileForm({
       }
 
       const extension =
-        selectedFile.name.split('.').pop()?.toLowerCase() || 'jpg'
+        selectedFile.name
+          .split('.')
+          .pop()
+          ?.toLowerCase() || 'jpg'
 
       uploadedPath =
         `${userId}/avatar-${crypto.randomUUID()}.${extension}`
 
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(uploadedPath, selectedFile, {
-          contentType: selectedFile.type,
-          cacheControl: '3600',
-          upsert: false,
-        })
+      const { error: uploadError } =
+        await supabase.storage
+          .from('avatars')
+          .upload(uploadedPath, selectedFile, {
+            contentType: selectedFile.type,
+            cacheControl: '3600',
+            upsert: false,
+          })
 
       if (uploadError) {
-        setError(`Photo upload failed: ${uploadError.message}`)
+        setError(
+          `Photo upload failed: ${uploadError.message}`
+        )
         setSaving(false)
         return
       }
@@ -121,7 +137,9 @@ export default function ProfileForm({
           .remove([uploadedPath])
       }
 
-      setError(`Profile update failed: ${updateError.message}`)
+      setError(
+        `Profile update failed: ${updateError.message}`
+      )
       setSaving(false)
       return
     }
@@ -146,74 +164,116 @@ export default function ProfileForm({
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      {avatarUrl && (
-        <div>
-          <p>Current photo:</p>
-
+    <form
+      className="profile-form"
+      onSubmit={handleSubmit}
+    >
+      <div className="profile-photo-panel">
+        {avatarUrl ? (
           <img
+            className="avatar-image"
             src={avatarUrl}
             alt="Profile"
-            width={160}
-            height={160}
+          />
+        ) : (
+          <div className="avatar-initials">
+            {firstName?.[0]?.toUpperCase() || 'U'}
+          </div>
+        )}
+
+        <div className="photo-copy">
+          <h3>Profile photo</h3>
+
+          <p>
+            Upload a photo to personalize your account.
+          </p>
+        </div>
+      </div>
+
+      <div className="form-grid">
+        <div className="form-field">
+          <label htmlFor="first-name">
+            First name
+          </label>
+
+          <input
+            id="first-name"
+            type="text"
+            value={firstName}
+            onChange={(event) =>
+              setFirstName(event.target.value)
+            }
           />
         </div>
+
+        <div className="form-field">
+          <label htmlFor="last-name">
+            Last name
+          </label>
+
+          <input
+            id="last-name"
+            type="text"
+            value={lastName}
+            onChange={(event) =>
+              setLastName(event.target.value)
+            }
+          />
+        </div>
+      </div>
+
+      <div className="file-field">
+        <div className="form-field">
+          <label htmlFor="avatar">
+            Change profile photo
+          </label>
+
+          <input
+            id="avatar"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={(event) => {
+              setSelectedFile(
+                event.target.files?.[0] ?? null
+              )
+            }}
+          />
+
+          <p className="helper-text">
+            JPEG, PNG, WebP, or GIF · Maximum 5 MB
+          </p>
+
+          {selectedFile && (
+            <p className="helper-text">
+              Selected: {selectedFile.name}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {error && (
+        <p className="form-message form-error">
+          {error}
+        </p>
       )}
 
-      <div>
-        <label htmlFor="first-name">First name</label>
-        <br />
-
-        <input
-          id="first-name"
-          type="text"
-          value={firstName}
-          onChange={(event) => setFirstName(event.target.value)}
-        />
-      </div>
-
-      <br />
-
-      <div>
-        <label htmlFor="last-name">Last name</label>
-        <br />
-
-        <input
-          id="last-name"
-          type="text"
-          value={lastName}
-          onChange={(event) => setLastName(event.target.value)}
-        />
-      </div>
-
-      <br />
-
-      <div>
-        <label htmlFor="avatar">Profile photo</label>
-        <br />
-
-        <input
-          id="avatar"
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
-          onChange={(event) => {
-            setSelectedFile(event.target.files?.[0] ?? null)
-          }}
-        />
-
-        <p>JPEG, PNG, WebP, or GIF. Maximum 5 MB.</p>
-      </div>
-
-      {selectedFile && (
-        <p>Selected: {selectedFile.name}</p>
+      {message && (
+        <p className="form-message form-success">
+          {message}
+        </p>
       )}
 
-      {error && <p>{error}</p>}
-      {message && <p>{message}</p>}
-
-      <button type="submit" disabled={saving}>
-        {saving ? 'Saving...' : 'Save Profile'}
-      </button>
+      <div className="action-row">
+        <button
+          className="button button-primary"
+          type="submit"
+          disabled={saving}
+        >
+          {saving
+            ? 'Saving...'
+            : 'Save profile'}
+        </button>
+      </div>
     </form>
   )
 }

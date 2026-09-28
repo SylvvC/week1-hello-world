@@ -23,9 +23,11 @@ export default async function DashboardPage() {
 
   if (error) {
     return (
-      <main>
-        <h1>Private Dashboard</h1>
-        <p>Could not load your profile.</p>
+      <main className="app-shell">
+        <div className="page-card">
+          <h1>Private Dashboard</h1>
+          <p>Could not load your profile.</p>
+        </div>
       </main>
     )
   }
@@ -40,36 +42,90 @@ export default async function DashboardPage() {
     avatarUrl = data.publicUrl
   }
 
+  const displayName =
+    `${profile?.first_name ?? ''} ${profile?.last_name ?? ''}`.trim()
+
+  const initials =
+    `${profile?.first_name?.[0] ?? ''}${profile?.last_name?.[0] ?? ''}`
+      .toUpperCase()
+
   return (
-    <main>
-      <h1>Private Dashboard</h1>
+    <main className="app-shell">
+      <div className="page-card">
+        <nav className="top-nav">
+          <Link
+            className="back-link"
+            href="/"
+          >
+            ← Student Hub
+          </Link>
 
-      <p>
-        This page is only available to signed-in users.
-      </p>
+          <span className="status-pill">
+            <span className="status-dot" />
+            Authenticated
+          </span>
+        </nav>
 
-      <h2>
-        Welcome, {profile?.first_name} {profile?.last_name}
-      </h2>
+        <header className="dashboard-intro">
+          <span className="eyebrow">
+            Private area
+          </span>
 
-      {avatarUrl && (
-        <img
-          src={avatarUrl}
-          alt="Profile"
-          width={160}
-          height={160}
-        />
-      )}
+          <h1>Your dashboard.</h1>
 
-      <p>
-        <Link href="/profile">Edit Profile</Link>
-      </p>
+          <p>
+            This route is only available to authenticated users.
+          </p>
+        </header>
 
-      <p>
-        <Link href="/">Back to Home</Link>
-      </p>
+        <section className="dashboard-card">
+          <div className="dashboard-profile">
+            {avatarUrl ? (
+              <img
+                className="avatar-image"
+                src={avatarUrl}
+                alt="Profile"
+              />
+            ) : (
+              <div className="avatar-initials">
+                {initials || 'U'}
+              </div>
+            )}
 
-      <SignOutButton />
+            <div>
+              <span className="eyebrow">
+                Welcome back
+              </span>
+
+              <h2>
+                {displayName || 'Student'}
+              </h2>
+
+              <p>
+                Your account and profile are securely connected.
+              </p>
+            </div>
+          </div>
+
+          <div className="action-row">
+            <Link
+              className="button-link"
+              href="/profile"
+            >
+              Edit profile
+            </Link>
+
+            <Link
+              className="button-link button-secondary"
+              href="/"
+            >
+              Back home
+            </Link>
+
+            <SignOutButton />
+          </div>
+        </section>
+      </div>
     </main>
   )
 }
