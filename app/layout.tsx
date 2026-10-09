@@ -12,10 +12,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata = {
-  title: 'Course & Profile Hub',
-  description: 'A Next.js app with Supabase authentication and profiles',
-}
+export const metadata: Metadata = {
+  title: "AI NYC Caption Battle",
+  description: "AI-generated humor for Columbia and NYC student life.",
+};
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
