@@ -1,6 +1,8 @@
+
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { voteOnGeneration } from "./actions";
+import CopyCaptionButton from "./copy-caption-button";
 import styles from "./feed.module.css";
 
 function FeedNavigation() {
@@ -23,7 +25,14 @@ function FeedNavigation() {
   );
 }
 
-export default async function FeedPage() {
+type FeedPageProps = {
+  searchParams: Promise<{ sort?: string | string[] }>;
+};
+
+export default async function FeedPage({ searchParams }: FeedPageProps) {
+  const { sort: requestedSort } = await searchParams;
+  const sort = requestedSort === "top" ? "top" : "newest";
+
   const supabase = await createClient();
 
   const {
@@ -35,10 +44,15 @@ export default async function FeedPage() {
       <main className={styles.page}>
         <FeedNavigation />
         <section className={styles.guestCard}>
-          <span className={styles.kicker}>♡ DEAR CAMPUS DIARY · COMMUNITY</span>
+          <span className={styles.kicker}>
+            ♡ DEAR CAMPUS DIARY · COMMUNITY
+          </span>
           <span className={styles.guestHeart} aria-hidden="true">♥</span>
           <h1>Good jokes are better <em>together.</em></h1>
-          <p>Sign in with Google to see the latest AI captions and vote for your favorites.</p>
+          <p>
+            Sign in with Google to see the latest AI captions
+            and vote for your favorites.
+          </p>
           <Link className={styles.primaryButton} href="/login">
             Sign in with Google →
           </Link>
@@ -57,22 +71,56 @@ export default async function FeedPage() {
     .from("votes")
     .select("generation_id, user_id, value");
 
+  // Calculate net scores for sorting.
+  const scores = new Map<string, number>();
+
+  for (const vote of votes ?? []) {
+    scores.set(
+      vote.generation_id,
+      (scores.get(vote.generation_id) ?? 0) + vote.value
+    );
+  }
+
+  const createdTime = (value: string | null) => {
+    const parsed = value ? Date.parse(value) : NaN;
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const sortedGenerations = [...(generations ?? [])].sort((a, b) => {
+    const newestFirst =
+      createdTime(b.created_at) - createdTime(a.created_at);
+
+    if (sort === "top") {
+      const scoreDifference =
+        (scores.get(b.id) ?? 0) - (scores.get(a.id) ?? 0);
+
+      return scoreDifference || newestFirst;
+    }
+
+    return newestFirst;
+  });
+
   return (
     <main className={styles.page}>
       <FeedNavigation />
 
       <header className={styles.hero}>
         <div className={styles.heroCopy}>
-          <span className={styles.kicker}>✿ DEAR CAMPUS DIARY · COMMUNITY</span>
+          <span className={styles.kicker}>
+            ✿ DEAR CAMPUS DIARY · COMMUNITY
+          </span>
+
           <h1>
             Campus chaos,
             <br />
             but make it <em>iconic.</em>
           </h1>
+
           <p>
-            The best Columbia and NYC moments, turned into AI-generated jokes.
-            Give your favorites a little love ♡
+            The best Columbia and NYC moments, turned into
+            AI-generated jokes. Give your favorites a little love ♡
           </p>
+
           <Link className={styles.primaryButton} href="/generate">
             ✦ Generate a Caption →
           </Link>
@@ -81,28 +129,66 @@ export default async function FeedPage() {
         <div className={styles.heroArt} aria-hidden="true">
           <span className={styles.sparkleOne}>✧</span>
           <span className={styles.sparkleTwo}>✦</span>
+
           <div className={styles.noteCard}>
             <span className={styles.notePin}>♥</span>
             <span className={styles.noteLabel}>CAMPUS LOVE NOTES</span>
             <span className={styles.noteSmile}>☺</span>
-            <strong>laugh a little,<br />vote a lot!</strong>
+            <strong>
+              laugh a little,
+              <br />
+              vote a lot!
+            </strong>
             <small>xoxo, the community</small>
           </div>
         </div>
       </header>
 
-      <section className={styles.feedSection} aria-labelledby="feed-heading">
+      <section
+        className={styles.feedSection}
+        aria-labelledby="feed-heading"
+      >
         <div className={styles.sectionHeader}>
           <div>
-            <span className={styles.sectionKicker}>FUNNY LITTLE MOMENTS</span>
-            <h2 id="feed-heading">The giggle gallery <span aria-hidden="true">♡</span></h2>
+            <span className={styles.sectionKicker}>
+              FUNNY LITTLE MOMENTS
+            </span>
+            <h2 id="feed-heading">
+              The giggle gallery <span aria-hidden="true">♡</span>
+            </h2>
           </div>
+
           {!generationsError && (
             <span className={styles.captionCount}>
-              {generations?.length ?? 0} {generations?.length === 1 ? "caption" : "captions"} ✿
+              {generations?.length ?? 0}{" "}
+              {generations?.length === 1 ? "caption" : "captions"} ✿
             </span>
           )}
         </div>
+
+        {!generationsError && !votesError && (
+          <nav className={styles.sortTabs} aria-label="Sort captions">
+            <Link
+              href="/feed"
+              className={`${styles.sortTab} ${
+                sort === "newest" ? styles.sortActive : ""
+              }`}
+              aria-current={sort === "newest" ? "page" : undefined}
+            >
+              Newest
+            </Link>
+
+            <Link
+              href="/feed?sort=top"
+              className={`${styles.sortTab} ${
+                sort === "top" ? styles.sortActive : ""
+              }`}
+              aria-current={sort === "top" ? "page" : undefined}
+            >
+              Top rated
+            </Link>
+          </nav>
+        )}
 
         {generationsError && (
           <p className={styles.errorMessage} role="alert">
@@ -116,81 +202,145 @@ export default async function FeedPage() {
           </p>
         )}
 
-        {!generationsError && !votesError && generations?.length === 0 && (
-          <div className={styles.emptyCard}>
-            <span aria-hidden="true">♡</span>
-            <h3>It's a little quiet in here...</h3>
-            <p>Be the first to bring some campus chaos to the feed.</p>
-            <Link className={styles.primaryButton} href="/generate">
-              Create the first caption →
-            </Link>
-          </div>
-        )}
+        {!generationsError &&
+          !votesError &&
+          generations?.length === 0 && (
+            <div className={styles.emptyCard}>
+              <span aria-hidden="true">♡</span>
+              <h3>It's a little quiet in here...</h3>
+              <p>
+                Be the first to bring some campus chaos to the feed.
+              </p>
+              <Link
+                className={styles.primaryButton}
+                href="/generate"
+              >
+                Create the first caption →
+              </Link>
+            </div>
+          )}
 
-        {!generationsError && !votesError && generations?.map((item) => {
-          const itemVotes = (votes ?? []).filter(
-            (vote) => vote.generation_id === item.id
-          );
+        {!generationsError &&
+          !votesError &&
+          sortedGenerations.map((item) => {
+            const itemVotes = (votes ?? []).filter(
+              (vote) => vote.generation_id === item.id
+            );
 
-          const upvotes = itemVotes.filter((vote) => vote.value === 1).length;
-          const downvotes = itemVotes.filter((vote) => vote.value === -1).length;
-          const myVote = itemVotes.find((vote) => vote.user_id === user.id)?.value;
-          const score = upvotes - downvotes;
+            const upvotes = itemVotes.filter(
+              (vote) => vote.value === 1
+            ).length;
 
-          return (
-            <article className={styles.captionCard} key={item.id}>
-              <div className={styles.cardTop}>
-                <span className={styles.aiLabel}>✦ AI-GENERATED LOVE NOTE</span>
-                <span className={styles.cardHeart} aria-hidden="true">♡</span>
-              </div>
+            const downvotes = itemVotes.filter(
+              (vote) => vote.value === -1
+            ).length;
 
-              <p className={styles.promptLabel}>THE CAMPUS MOMENT ✿</p>
-              <p className={styles.promptText}>{item.prompt}</p>
+            const myVote = itemVotes.find(
+              (vote) => vote.user_id === user.id
+            )?.value;
 
-              <p className={styles.captionText}>{item.content}</p>
+            const score = upvotes - downvotes;
 
-              <div className={styles.voteBar}>
-                <div className={styles.voteActions} aria-label="Rate this caption">
-                  <form action={voteOnGeneration}>
-                    <input type="hidden" name="generation_id" value={item.id} />
-                    <input type="hidden" name="value" value="1" />
-                    <button
-                      type="submit"
-                      aria-label={`Upvote: ${item.prompt}`}
-                      aria-pressed={myVote === 1}
-                      className={`${styles.voteButton} ${myVote === 1 ? styles.selectedUpvote : ""}`}
-                    >
-                      <span aria-hidden="true">👍</span>
-                      <span>Upvote</span>
-                      <strong>{upvotes}</strong>
-                    </button>
-                  </form>
+            return (
+              <article
+                className={styles.captionCard}
+                key={item.id}
+              >
+                <div className={styles.cardTop}>
+                  <span className={styles.aiLabel}>
+                    ✦ AI-GENERATED LOVE NOTE
+                  </span>
 
-                  <form action={voteOnGeneration}>
-                    <input type="hidden" name="generation_id" value={item.id} />
-                    <input type="hidden" name="value" value="-1" />
-                    <button
-                      type="submit"
-                      aria-label={`Downvote: ${item.prompt}`}
-                      aria-pressed={myVote === -1}
-                      className={`${styles.voteButton} ${myVote === -1 ? styles.selectedDownvote : ""}`}
-                    >
-                      <span aria-hidden="true">👎</span>
-                      <span>Downvote</span>
-                      <strong>{downvotes}</strong>
-                    </button>
-                  </form>
+                  <CopyCaptionButton text={item.content} />
                 </div>
-                <span className={styles.score} aria-label={`Score: ${score}`}>
-                  ♥ Score: <strong>{score}</strong>
-                </span>
-              </div>
-            </article>
-          );
-        })}
+
+                <p className={styles.promptLabel}>
+                  THE CAMPUS MOMENT ✿
+                </p>
+
+                <p className={styles.promptText}>
+                  {item.prompt}
+                </p>
+
+                <p className={styles.captionText}>
+                  {item.content}
+                </p>
+
+                <div className={styles.voteBar}>
+                  <div
+                    className={styles.voteActions}
+                    aria-label="Rate this caption"
+                  >
+                    <form action={voteOnGeneration}>
+                      <input
+                        type="hidden"
+                        name="generation_id"
+                        value={item.id}
+                      />
+                      <input
+                        type="hidden"
+                        name="value"
+                        value="1"
+                      />
+                      <button
+                        type="submit"
+                        aria-label={`Upvote: ${item.prompt}`}
+                        aria-pressed={myVote === 1}
+                        className={`${styles.voteButton} ${
+                          myVote === 1
+                            ? styles.selectedUpvote
+                            : ""
+                        }`}
+                      >
+                        <span aria-hidden="true">👍</span>
+                        <span>Upvote</span>
+                        <strong>{upvotes}</strong>
+                      </button>
+                    </form>
+
+                    <form action={voteOnGeneration}>
+                      <input
+                        type="hidden"
+                        name="generation_id"
+                        value={item.id}
+                      />
+                      <input
+                        type="hidden"
+                        name="value"
+                        value="-1"
+                      />
+                      <button
+                        type="submit"
+                        aria-label={`Downvote: ${item.prompt}`}
+                        aria-pressed={myVote === -1}
+                        className={`${styles.voteButton} ${
+                          myVote === -1
+                            ? styles.selectedDownvote
+                            : ""
+                        }`}
+                      >
+                        <span aria-hidden="true">👎</span>
+                        <span>Downvote</span>
+                        <strong>{downvotes}</strong>
+                      </button>
+                    </form>
+                  </div>
+
+                  <span
+                    className={styles.score}
+                    aria-label={`Score: ${score}`}
+                  >
+                    ♥ Score: <strong>{score}</strong>
+                  </span>
+                </div>
+              </article>
+            );
+          })}
       </section>
 
-      <p className={styles.footer}>Made for campus chaos ♥</p>
+      <p className={styles.footer}>
+        Made for campus chaos ♥
+      </p>
     </main>
   );
 }
